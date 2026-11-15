@@ -531,24 +531,184 @@ async function enter(){
  var loc=null;try{loc=JSON.parse(localStorage.getItem("silsilah-trees"))}catch(x){}
  if(ROLE=="owner"&&loc&&TR.t.length==1&&!TR.t[0].sv)ask("Jumpa data salasilah dalam browser ini. Import ke pangkalan data?",function(){var s2=JSON.stringify(loc);loc.t.forEach(function(t){var n=uid();s2=s2.split('"'+t.id+'"').join('"'+n+'"')});var d2=JSON.parse(s2);d2.t.forEach(function(t){t.sv="";t.sn=""});TR=d2;T=TR.t[0].T;render();syncAll()},"Import","#6b8e3d")}
 async function adminPanel(){
- panel("Admin Panel","<p>Memuatkan…</p>");
- var r=await sb.from("memberships").select("user_id,status,role,note,requested_at,profiles(email,full_name)").eq("family_id",FAM).order("requested_at",{ascending:false});
- if(r.error){$("#vb").innerHTML="<p>"+E(r.error.message)+"</p>";return}
- var by=function(s){return r.data.filter(function(x){return s.indexOf(x.status)>-1})},
- sel=function(c){return '<select class="rs">'+[["viewer","Viewer"],["editor","Editor"],["owner","Co-owner"]].map(function(o){return '<option value="'+o[0]+'"'+(o[0]==c?" selected":"")+'>'+o[1]+'</option>'}).join("")+'</select>'},
- card=function(x,b){var p=x.profiles||{};return '<div class="ac2" data-u="'+x.user_id+'"><b>'+E(p.full_name||"(tiada nama)")+'</b><br><small>'+E(p.email||"")+' · '+new Date(x.requested_at).toLocaleDateString("ms-MY")+'</small><p>'+(x.note?E(x.note):"<i>Tiada nota hubungan</i>")+'</p>'+b+'</div>'},
- pe=by(["pending"]),me=by(["approved"]),ot=by(["rejected","revoked"]);
- $("#vb").innerHTML='<h3>Menunggu kelulusan ('+pe.length+')</h3>'+(pe.map(function(x){return card(x,'<div class="row">'+sel("viewer")+'<button class="btn" data-ap="1">Luluskan</button><button class="btn g" data-rj="1">Tolak</button></div>')}).join("")||"<p>Tiada permohonan baharu.</p>")
- +'<h3>Ahli ('+me.length+')</h3>'+me.map(function(x){var self=x.user_id==ME.id;return card(x,self?"<small>Anda ("+x.role+")</small>":'<div class="row">'+sel(x.role)+'<button class="btn g" data-cr="1">Tukar</button><button class="btn g" data-rv="1">Batal akses</button></div>')}).join("")
- +(ot.length?'<h3>Ditolak / dibatalkan ('+ot.length+')</h3>'+ot.map(function(x){return card(x,'<small>'+x.status+'</small><div class="row">'+sel("viewer")+'<button class="btn g" data-ap="1">Luluskan semula</button></div>')}).join(""):"")}
-$("#vb").addEventListener("click",function(e){var b=e.target.closest("button[data-ap],button[data-rj],button[data-cr],button[data-rv]");if(!b)return;
- var c=b.closest(".ac2"),u=c.dataset.u,n=c.querySelector("b").textContent,role=c.querySelector("select")&&c.querySelector("select").value,
- run=async function(fn,args){var r=await sb.rpc(fn,Object.assign({p_family:FAM,p_user:u},args||{}));if(r.error)alert(r.error.message);adminPanel()};
- if(b.dataset.ap)run("approve_member",{p_role:role});
- else if(b.dataset.cr)run("change_role",{p_role:role});
- else if(b.dataset.rj)ask("Tolak permohonan "+n+"?",function(){run("reject_member")},"Tolak");
- else ask("Batalkan akses "+n+"? Mereka tidak lagi boleh melihat salasilah.",function(){run("revoke_member")},"Batal akses")});
-async function pull(){
+async function adminPanel(){
+  panel("Admin Panel","<p>Memuatkan…</p>");
+
+  // Load memberships without embedding profiles.
+  // memberships has two FK relationships to profiles (user_id and decided_by),
+  // so embedding profiles directly is ambiguous.
+  var r=await sb.from("memberships")
+    .select("user_id,status,role,note,requested_at")
+    .eq("family_id",FAM)
+    .order("requested_at",{ascending:false});
+
+  if(r.error){
+    $("#vb").innerHTML="<p>"+E(r.error.message)+"</p>";
+    return;
+  }
+
+  var ms=r.data||[];
+  var ids=ms.map(function(x){return x.user_id});
+
+  // Load profiles separately.
+  var ps={};
+
+  if(ids.length){
+    var pr=await sb.from("profiles")
+      .select("id,email,full_name")
+      .in("id",ids);
+
+    if(pr.error){
+      $("#vb").innerHTML="<p>"+E(pr.error.message)+"</p>";
+      return;
+    }
+
+    (pr.data||[]).forEach(function(p){
+      ps[p.id]=p;
+    });
+  }
+
+  var by=function(s){
+    return ms.filter(function(x){
+      return s.indexOf(x.status)>-1;
+    });
+  };
+
+  var sel=function(c){
+    return '<select class="rs">'+
+      [["viewer","Viewer"],["editor","Editor"],["owner","Co-owner"]]
+      .map(function(o){
+        return '<option value="'+o[0]+'"'+
+          (o[0]==c?" selected":"")+
+          '>'+o[1]+'</option>';
+      }).join("")+
+      '</select>';
+  };
+
+  var card=function(x,b){
+    var p=ps[x.user_id]||{};
+
+    return '<div class="ac2" data-u="'+x.user_id+'">'+
+      '<b>'+E(p.full_name||"(tiada nama)")+'</b><br>'+
+      '<small>'+E(p.email||"")+
+      ' · '+
+      new Date(x.requested_at).toLocaleDateString("ms-MY")+
+      '</small>'+
+      '<p>'+
+      (x.note?E(x.note):"<i>Tiada nota hubungan</i>")+
+      '</p>'+
+      b+
+      '</div>';
+  };
+
+  var pe=by(["pending"]);
+  var me=by(["approved"]);
+  var ot=by(["rejected","revoked"]);
+
+  $("#vb").innerHTML=
+
+    '<h3>Menunggu kelulusan ('+pe.length+')</h3>'+
+    (
+      pe.map(function(x){
+        return card(x,
+          '<div class="row">'+
+          sel("viewer")+
+          '<button class="btn" data-ap="1">Luluskan</button>'+
+          '<button class="btn g" data-rj="1">Tolak</button>'+
+          '</div>'
+        );
+      }).join("") ||
+      "<p>Tiada permohonan baharu.</p>"
+    )+
+
+    '<h3>Ahli ('+me.length+')</h3>'+
+    me.map(function(x){
+      var self=x.user_id==ME.id;
+
+      return card(
+        x,
+        self
+          ? "<small>Anda ("+x.role+")</small>"
+          : '<div class="row">'+
+            sel(x.role)+
+            '<button class="btn g" data-cr="1">Tukar</button>'+
+            '<button class="btn g" data-rv="1">Batal akses</button>'+
+            '</div>'
+      );
+    }).join("")+
+
+    (
+      ot.length
+      ?
+      '<h3>Ditolak / dibatalkan ('+ot.length+')</h3>'+
+      ot.map(function(x){
+        return card(
+          x,
+          '<div class="row">'+
+          sel("viewer")+
+          '<button class="btn g" data-ap="1">Luluskan semula</button>'+
+          '</div>'
+        );
+      }).join("")
+      :
+      ""
+    );
+
+  $("#vb").addEventListener("click",function(e){
+    var b=e.target.closest(
+      "button[data-ap],button[data-rj],button[data-cr],button[data-rv]"
+    );
+
+    if(!b)return;
+
+    var c=b.closest(".ac2"),
+        u=c.dataset.u,
+        n=c.querySelector("b").textContent,
+        role=c.querySelector("select")&&c.querySelector("select").value;
+
+    var run=async function(fn,args){
+      var r=await sb.rpc(
+        fn,
+        Object.assign(
+          {p_family:FAM,p_user:u},
+          args||{}
+        )
+      );
+
+      if(r.error){
+        alert(r.error.message);
+        return;
+      }
+
+      adminPanel();
+    };
+
+    if(b.dataset.ap){
+      run("approve_member",{p_role:role});
+    }
+    else if(b.dataset.cr){
+      run("change_role",{p_role:role});
+    }
+    else if(b.dataset.rj){
+      ask(
+        "Tolak permohonan "+n+"?",
+        function(){
+          run("reject_member");
+        },
+        "Tolak"
+      );
+    }
+    else{
+      ask(
+        "Batalkan akses "+n+"? Mereka tidak lagi boleh melihat salasilah.",
+        function(){
+          run("revoke_member");
+        },
+        "Batal akses"
+      );
+    }
+  });
+}
  if(!sb||!FAM||editing||syncing||offlineMode||!navigator.onLine||document.hidden)return;
  var r=await sb.from("trees").select("id,name,data,version").eq("family_id",FAM);if(r.error||!r.data)return;
  var ch=0,cur=TR.t[TR.c]&&TR.t[TR.c].id,ids=r.data.map(function(x){return x.id});
