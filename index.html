@@ -710,7 +710,7 @@ async function adminPanel(){
     }
   });
 }
-
+async function pull(){
  if(!sb||!FAM||editing||syncing||offlineMode||!navigator.onLine||document.hidden)return;
  var r=await sb.from("trees").select("id,name,data,version").eq("family_id",FAM);if(r.error||!r.data)return;
  var ch=0,cur=TR.t[TR.c]&&TR.t[TR.c].id,ids=r.data.map(function(x){return x.id});
