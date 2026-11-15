@@ -436,7 +436,7 @@ function famUI(){var p=cur,u=p._o,pu=u._par,own=p===u.p,ina=!own&&!u._sp,pr=own&
  h+=pr.length?chips(pr):(p===T.p?'<button class="btn g" data-add="p">+ Tambah ibu bapa</button>':ina?'<button class="btn g" data-add="pp">+ Tambah ibu bapa</button>':'<small>–</small>');
  if(own&&pu){var sb=pu.kids.filter(function(k){return k!==u}).map(function(k){return k.p});
   h+='<h3>Adik-beradik</h3>'+chips(sb)+'<div class="row"><button class="btn g" data-add="bs">+ Lelaki</button><button class="btn g" data-add="bd">+ Perempuan</button></div>'}
- h+='<h3>Pasangan</h3>'+(m?'<div class="kr"><input type="text" data-sp="1" value="'+E(m.n)+'"><label class="dvl"><input type="checkbox" id="dvc"'+(u.dv?' checked':'')+'> Bercerai</label>'+(m===u.s?'<button class="rm" data-rs="1">×</button>':'')+'</div>':'<button class="btn g" data-add="sp">'+(p.g=="m"?"+ Isteri":"+ Suami")+'</button>');
+ h+='<h3>Pasangan</h3>'+(m?'<div class="kr"><input type="text" data-sp="1" value="'+E(m.n)+'"><label class="dvl"><input type="checkbox" id="dvc"'+(u.dv?' checked':'')+'> Tidak lagi bersama</label>'+(m===u.s?'<button class="rm" data-rs="1">×</button>':'')+'</div>':'<button class="btn g" data-add="sp">'+(p.g=="m"?"+ Isteri":"+ Suami")+'</button>');
  if(u._sp){$("#fam").innerHTML=h+'<h3>Anak</h3>'+chips([u._sp]);return}
  h+='<h3>Anak (sulung di atas, seret ☰ untuk susun)</h3>'+(u.kids||[]).map(function(k,i){return '<div class="kr" data-i="'+i+'"><span class="dh">☰</span><input type="text" data-k="'+i+'" value="'+E(k.p.n)+'"><button class="rm" data-ri="'+i+'">×</button></div>'}).join("")+'<div class="row"><button class="btn g" data-add="s">+ Anak lelaki</button><button class="btn g" data-add="d">+ Anak perempuan</button></div>';
  $("#fam").innerHTML=h}
