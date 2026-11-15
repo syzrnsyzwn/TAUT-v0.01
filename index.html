@@ -531,6 +531,7 @@ async function enter(){
  var loc=null;try{loc=JSON.parse(localStorage.getItem("silsilah-trees"))}catch(x){}
  if(ROLE=="owner"&&loc&&TR.t.length==1&&!TR.t[0].sv)ask("Jumpa data salasilah dalam browser ini. Import ke pangkalan data?",function(){var s2=JSON.stringify(loc);loc.t.forEach(function(t){var n=uid();s2=s2.split('"'+t.id+'"').join('"'+n+'"')});var d2=JSON.parse(s2);d2.t.forEach(function(t){t.sv="";t.sn=""});TR=d2;T=TR.t[0].T;render();syncAll()},"Import","#6b8e3d")}
 
+
 async function adminPanel(){
   panel("Admin Panel","<p>Memuatkan…</p>");
 
@@ -709,6 +710,7 @@ async function adminPanel(){
     }
   });
 }
+
  if(!sb||!FAM||editing||syncing||offlineMode||!navigator.onLine||document.hidden)return;
  var r=await sb.from("trees").select("id,name,data,version").eq("family_id",FAM);if(r.error||!r.data)return;
  var ch=0,cur=TR.t[TR.c]&&TR.t[TR.c].id,ids=r.data.map(function(x){return x.id});
