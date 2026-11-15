@@ -177,7 +177,7 @@ header{padding-left:68px;padding-right:68px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* ====== ISI DUA NILAI INI (Supabase -> Project Settings -> API) ====== */
-var SB_URL="PASTE_SUPABASE_URL",SB_KEY="PASTE_SUPABASE_ANON_KEY";
+var SB_URL="https://haznfonlvbpakjtokhhm.supabase.co/",SB_KEY="sb_publishable_J_oAeUZkWXjVgBgWmwjLOA_yHiifn1d";
 var Y=new Date().getFullYear(),snap="",ALL=[],KEY="silsilah-v2",editing=false,cur=null,tmp={},SK="#f2c9a0",HR="#3b2a20";
 var $=function(s){return document.querySelector(s)};
 function E(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
